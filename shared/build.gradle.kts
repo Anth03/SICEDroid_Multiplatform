@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -48,12 +49,27 @@ kotlin {
     }
     
     sourceSets {
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.ktor.client.android)
+        val sqliteMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+                implementation(libs.sqldelight.runtime)
+                implementation(libs.sqldelight.coroutines)
+            }
         }
-        jvmMain.dependencies {
-            implementation(libs.ktor.client.java)
+        androidMain.get().apply {
+            dependsOn(sqliteMain)
+            dependencies {
+                implementation(libs.compose.uiToolingPreview)
+                implementation(libs.ktor.client.android)
+                implementation(libs.sqldelight.android.driver)
+            }
+        }
+        jvmMain.get().apply {
+            dependsOn(sqliteMain)
+            dependencies {
+                implementation(libs.ktor.client.java)
+                implementation(libs.sqldelight.sqlite.driver)
+            }
         }
         commonMain.dependencies {
             implementation(libs.ktor.client.core)
@@ -79,4 +95,13 @@ kotlin {
 
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
+}
+
+sqldelight {
+    databases {
+        create("SicenetDatabase") {
+            packageName.set("com.example.database")
+            srcDirs.setFrom("src/sqliteMain/sqldelight")
+        }
+    }
 }

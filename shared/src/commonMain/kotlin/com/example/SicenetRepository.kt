@@ -1,13 +1,14 @@
 package com.example.sicedroidmultiplatform
 
 import com.example.sicedroidmultiplatform.data.*
+import com.example.sicedroidmultiplatform.database.DataCache
 import com.example.sicedroidmultiplatform.network.SicenetApiService
 import io.ktor.client.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.cookies.*
 import kotlinx.serialization.json.*
 
-class SicenetRepository {
+class SicenetRepository(private val cache: DataCache) {
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -42,12 +43,18 @@ class SicenetRepository {
     suspend fun getPerfilAcademico(): ProfileStudent {
         val xml = apiService.getPerfilAcademico()
         val jsonStr = extractFromSoap(xml, "getAlumnoAcademicoWithLineamientoResult")
-        return if (jsonStr.isNotEmpty() && jsonStr != "null") {
+        val profile = if (jsonStr.isNotEmpty() && jsonStr != "null") {
             runCatching { json.decodeFromString<ProfileStudent>(jsonStr) }.getOrDefault(ProfileStudent())
         } else ProfileStudent()
+        if (profile.matricula.isNotEmpty()) cache.saveProfile(profile)
+        return profile
     }
 
+    fun getCachedProfile(): ProfileStudent? = cache.getProfile()
+
     // ── Carga Académica ──────────────────────────────────────────────────────
+
+    fun getCachedCargaAcademica(): List<CargaAcademica> = cache.getCargaAcademica()
 
     suspend fun getCargaAcademica(): List<CargaAcademica> {
         val xml = apiService.getCargaAcademica()
@@ -68,10 +75,14 @@ class SicenetRepository {
                     semestre   = obj.int("Semestre", "semestre", "SemActual", "semActual", "sem")
                 )
             }
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).also { list ->
+            if (list.isNotEmpty()) cache.saveCargaAcademica(list)
+        }
     }
 
     // ── Kardex ───────────────────────────────────────────────────────────────
+
+    fun getCachedKardex(): List<KardexItem> = cache.getKardex()
 
     suspend fun getKardex(lineamiento: Int): List<KardexItem> {
         val xml = apiService.getKardexConPromedio(lineamiento)
@@ -98,11 +109,15 @@ class SicenetRepository {
                     observaciones = obj.str("Observaciones", "observaciones")
                 )
             }
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).also { list ->
+            if (list.isNotEmpty()) cache.saveKardex(list)
+        }
     }
 
     // ── Calificaciones por Unidad ─────────────────────────────────────────────
     // Las unidades vienen como campos U1, U2, U3... en cada objeto de materia.
+
+    fun getCachedCalifUnidades(): List<CalificacionUnidad> = cache.getCalifUnidades()
 
     suspend fun getCalifUnidades(): List<CalificacionUnidad> {
         val xml = apiService.getCalifUnidades()
@@ -131,10 +146,14 @@ class SicenetRepository {
                     } else null
                 }
             }
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).also { list ->
+            if (list.isNotEmpty()) cache.saveCalifUnidades(list)
+        }
     }
 
     // ── Calificaciones Finales ────────────────────────────────────────────────
+
+    fun getCachedCalifFinal(): List<CalificacionFinal> = cache.getCalifFinal()
 
     suspend fun getCalifFinal(modEducativo: Int): List<CalificacionFinal> {
         val xml = apiService.getCalifFinal(modEducativo)
@@ -161,10 +180,14 @@ class SicenetRepository {
                     observaciones = obj.str("Observaciones", "observaciones", "obs")
                 )
             }
-        }.getOrDefault(emptyList())
+        }.getOrDefault(emptyList()).also { list ->
+            if (list.isNotEmpty()) cache.saveCalifFinal(list)
+        }
     }
 
-    fun clearSession() { /* Cookies in-memory: se limpian al recrear el cliente */ }
+    fun clearSession() {
+        cache.clearAll()
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 

@@ -11,6 +11,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.sicedroidmultiplatform.database.DataCacheFactory
 import com.example.sicedroidmultiplatform.ui.CargaAcademicaScreen
 import com.example.sicedroidmultiplatform.ui.CalifFinalScreen
 import com.example.sicedroidmultiplatform.ui.CalifUnidadesScreen
@@ -20,8 +21,8 @@ import com.example.sicedroidmultiplatform.ui.ProfileScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
-    val snViewModel: SicenetViewModel = viewModel { SicenetViewModel() }
+fun App(cacheFactory: DataCacheFactory) {
+    val snViewModel: SicenetViewModel = viewModel { SicenetViewModel(cacheFactory) }
 
     MaterialTheme {
         Scaffold(
