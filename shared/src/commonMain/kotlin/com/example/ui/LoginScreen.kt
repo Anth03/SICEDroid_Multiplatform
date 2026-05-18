@@ -9,43 +9,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.sicedroidmultiplatform.SicenetRepository
-import kotlinx.coroutines.launch
+import com.example.sicedroidmultiplatform.SicenetUiState
 
 @Composable
 fun LoginScreen(
-    repository: SicenetRepository,
-    onLoginSuccess: () -> Unit
+    uiState: SicenetUiState,
+    onLoginClick: (matricula: String, password: String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var matricula by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    val loginState by repository.loginState.collectAsState()
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(loginState) {
-        if (loginState?.success == true) {
-            isLoading = false
-            onLoginSuccess()
-        } else if (loginState?.success == false && loginState?.message != null) {
-            isLoading = false
-            errorMessage = loginState.message
-        }
-    }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "SICENET 📚",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
+            text = "SICENET",
+            style = MaterialTheme.typography.headlineMedium
         )
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -54,9 +38,10 @@ fun LoginScreen(
             value = matricula,
             onValueChange = { matricula = it },
             label = { Text("Matrícula") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            enabled = !isLoading
+            enabled = uiState !is SicenetUiState.Loading
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -65,57 +50,39 @@ fun LoginScreen(
             value = password,
             onValueChange = { password = it },
             label = { Text("Contraseña") },
-            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            enabled = !isLoading
+            modifier = Modifier.fillMaxWidth(),
+            enabled = uiState !is SicenetUiState.Loading
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        errorMessage?.let {
+        if (uiState is SicenetUiState.Error) {
             Text(
-                text = it,
+                text = uiState.message,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                if (matricula.isNotBlank() && password.isNotBlank()) {
-                    isLoading = true
-                    errorMessage = null
-                    scope.launch {
-                        repository.login(matricula, password)
-                    }
-                } else {
-                    errorMessage = "Ingresa matrícula y contraseña"
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Iniciando sesión...")
-            } else {
-                Text("Ingresar")
-            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Plataforma: ${getPlatform().name}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        when (uiState) {
+            is SicenetUiState.Loading -> {
+                CircularProgressIndicator(modifier = Modifier.size(48.dp))
+            }
+            else -> {
+                Button(
+                    onClick = { onLoginClick(matricula, password) },
+                    enabled = matricula.isNotBlank() && password.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Iniciar Sesión")
+                }
+            }
+        }
     }
 }
