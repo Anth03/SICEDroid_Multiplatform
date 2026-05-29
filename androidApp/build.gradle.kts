@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -36,9 +38,25 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    signingConfigs {
+        create("release") {
+            val props = Properties()
+            val propsFile = rootProject.file("local.properties")
+            if (propsFile.exists()) {
+                props.load(FileInputStream(propsFile))
+            }
+            storeFile = file(props.getProperty("SICENET_STORE_FILE"))
+            storePassword = props.getProperty("SICENET_STORE_PASSWORD")
+            keyAlias = props.getProperty("SICENET_KEY_ALIAS")
+            keyPassword = props.getProperty("SICENET_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
